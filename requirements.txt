@@ -20,7 +20,7 @@ markdown-it-py==3.0.0
 MarkupSafe==3.0.1
 mdurl==0.1.2
 murmurhash==1.0.10
-nba-api==1.1.13
+nba_api==1.1.13
 numpy==2.0.2
 packaging==24.1
 pandas==2.2.3
