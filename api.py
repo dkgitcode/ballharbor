@@ -13,7 +13,7 @@ search_engine = SearchEngine()
 # Allow CORS for local frontend development
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Specify the frontend URL
+    allow_origins=["https://ballharbor.vercel.app", "http://localhost:3000"],  # Specify the frontend URL
     allow_credentials=True,
     allow_methods=["*"],  # Allow all HTTP methods (GET, POST, etc.)
     allow_headers=["*"],  # Allow all headers
