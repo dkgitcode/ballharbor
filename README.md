@@ -25,8 +25,4 @@ Currently, the NBA does not allow for their API to be used for any commercial pu
 
 The search engine is comprised of two parts, the `EntityExtractor` and `SearchEngine`. The `EntityExtractor` is dedicated to spellcheck, entity recognition, and entity linking. The goal is for the entity extractor to feed our search engine with easily parameterized queries. The `SearchEngine` takes those parameters and then queries the `nba_api` library to find and filter the specified clips.
 
-## Future Work & Ideas
-
-I've considered using a large language model to help pick up on details from the query but it felt like using a bazooka to kill a fly. However, I can see there being extreme edge cases that this simple NLP/naive search engine cannot work on. 
-
 
