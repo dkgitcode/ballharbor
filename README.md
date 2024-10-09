@@ -3,7 +3,7 @@ A natural language search engine for NBA highlights using the NBA Stats API, `sp
 
 ## Demo
 
-INSERT VIDEO HERE
+https://github.com/user-attachments/assets/927c24b2-7b93-4324-8b0c-a6ef47c51939
 
 ## Installation
 
@@ -12,7 +12,7 @@ INSERT VIDEO HERE
 ```bash
 pip install -r requirements.txt --no-deps
 ```
-3. Either try out the notebook or run it as an API
+3. Either try out the `demo.ipynb` notebook or run it with `fastapi`&`uvicorn`
 ```bash
 uvicorn api:app --reload
 ```
