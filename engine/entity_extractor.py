@@ -1,6 +1,6 @@
 import re
 import spacy
-from engine.keywords_constants import SHOT_SPECIFIER_MAP, SCORE_SPECIFIER_MAP
+from engine.keywords_constants import SHOT_SPECIFIER_MAP, SCORE_SPECIFIER_MAP, CONTEXT_MEASURE_MAP, MONTH_MAP, CLUTCH_KEYWORDS, SEASON_KEYWORDS, CLUTCH_TIME_MAP
 from rapidfuzz import process, fuzz
 
 
@@ -12,34 +12,6 @@ class EntityExtractor:
         self.active_players = active_players
         self.first_name_to_full_names = first_name_to_full_names
         self.last_name_to_full_names = last_name_to_full_names
-
-        # Context Measure mapping dictionary
-        self.context_measure_map = {
-            "PTS": ["point", "score", "pts", "points", "scoring", "buckets", "bucket", "layups", "makes", "lays",
-                    "step back", "alley oop", "dunk", "fadeaway", "fadeaways", "jumper", "jump shot", "midrange", "middy", "layup", "layups", "dunks", "dunk", "flush", "flushes", "alley oops", "oops", "slams", "slam dunk", "slam dunks", "slam",  "jam", "jams"] + list(SHOT_SPECIFIER_MAP.keys()),
-            "BLK": ["block", "swat", "blocks", "swats", "reject", "rejections", "rejection", "swatted"],
-            "STL": ["steal", "steals", "thief", "thieves", "cookies", "cookie", "stolen"],
-            "AST": ["assist", "apple", "dime", "assists", "passing", "apples"],
-            "REB": ["board", "rebound", "rebounds", "boards", "grab"],
-            "TOV": ["turnover", "giveaway", "turnovers", "lose", "losing possession", "lost possesion", "giveaways"],
-            "MISS": ["brick", "bricks", "miss", "misses", "airball", "missed shot", "failed shot", "missed shots", "clank", "clanks"],
-            "FGA": ["all shots", "shot attempts", "attempts", "shots", "field goal attempts", "fga", "fgas", "field goal attempt"],
-        }
-        # Month mapping for user queries
-        self.month_map = {
-            "january": "04", "jan": "04",
-            "february": "05", "feb": "05",
-            "march": "06", "mar": "06",
-            "april": "07", "apr": "07",
-            "may": "08",
-            "june": "09", "jun": "09",
-            "july": "10", "jul": "10",
-            "august": "11", "aug": "11",
-            "september": "12", "sep": "12",
-            "october": "01", "oct": "01",
-            "november": "02", "nov": "02",
-            "december": "03", "dec": "03"
-        }
         
     def reformulate_query(self, user_query):
         """
@@ -53,13 +25,11 @@ class EntityExtractor:
         """
         # Step 1: Separate the keyword categories
         player_names = list(self.active_players.keys())
-        context_keywords = [word for measure in self.context_measure_map for word in self.context_measure_map[measure]]
-        month_keywords = list(self.month_map.keys())
+        context_keywords = [word for measure in CONTEXT_MEASURE_MAP for word in CONTEXT_MEASURE_MAP[measure]]
+        month_keywords = list(MONTH_MAP.keys())
         specifier_keywords = list(SHOT_SPECIFIER_MAP.keys())
         score_keywords = list(SCORE_SPECIFIER_MAP.keys())
-        clutch_keywords = ["clutch", "last minute", "final minute", "end of the game", "last second", "final seconds", "last 10 seconds", "last-second"]
-        season_keywords = ["playoffs", "postseason", "regular season", "preseason", "all-star", "all star", 'play-offs', 'play-off', 'post-season', ]
-        non_player_keywords = context_keywords + month_keywords + specifier_keywords + clutch_keywords + season_keywords + score_keywords
+        non_player_keywords = context_keywords + month_keywords + specifier_keywords + CLUTCH_KEYWORDS + SEASON_KEYWORDS + score_keywords
 
         # Step 2: Perform fuzzy matching on the entire query using player names
         matched_fragment, score, _ = process.extractOne(user_query.lower(), [p.lower() for p in player_names], scorer=fuzz.partial_ratio)
@@ -152,7 +122,6 @@ class EntityExtractor:
         :return: A tuple (list of context measures, list of specific play type keywords).
         """
         doc = self.nlp(user_input.lower())
-        raw_split = user_input.lower().split()
         found_measures = set()
         shot_specifiers = []
 
@@ -166,7 +135,7 @@ class EntityExtractor:
             normalized_text =token.text
             
             # Check if the token matches a context measure keyword
-            for measure, keywords in self.context_measure_map.items():
+            for measure, keywords in CONTEXT_MEASURE_MAP.items():
                 if normalized_text in keywords:
                     found_measures.add(measure)
                     if measure == "PTS" and normalized_text not in shot_specifiers:
@@ -197,15 +166,6 @@ class EntityExtractor:
         return score_specifiers[0]
     
     def _extract_clutch_time(self, query):
-        clutch_time_map = {
-            "clutch": "Last 5 Minutes",
-            "last minute": "Last 1 Minute",
-            "final minute": "Last 1 Minute",
-            "end of the game": "Last 5 Minutes",
-            "last second": "Last 10 Seconds",
-            "final seconds": "Last 10 Seconds",
-            "last 10 seconds": "Last 10 Seconds",
-        }
         
         # Define priority order (from most specific to least specific)
         priority_order = ["Last 10 Seconds", "Last 1 Minute", "Last 5 Minutes"]
@@ -213,7 +173,7 @@ class EntityExtractor:
         lower_query = query.lower()
         matches = []
         
-        for phrase, clutch_value in clutch_time_map.items():
+        for phrase, clutch_value in CLUTCH_TIME_MAP.items():
             if re.search(rf"\b{re.escape(phrase)}\b", lower_query):
                 matches.append(clutch_value)
         
@@ -279,7 +239,7 @@ class EntityExtractor:
         doc = self.nlp(query.lower())
 
         for token in doc:
-            if token.text in self.month_map:
-                return self.month_map[token.text]
+            if token.text in MONTH_MAP:
+                return MONTH_MAP[token.text]
 
         return "0"  # Default to "0" if no month is found

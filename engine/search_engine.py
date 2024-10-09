@@ -6,18 +6,12 @@ from engine.entity_extractor import EntityExtractor
 import re
 class SearchEngine:
     def __init__(self, season='2023-24', season_type='Regular Season', last_n_games=200):
-        # Load NLP model
         self.nlp = spacy.load("en_core_web_sm")
-
-        # Load team ID dictionary
         self.team_id_dict = load_team_id_dict("engine/team_id_dict.json")
-
-        # Create player dictionaries
         self.active_players, first_name_to_full_name, last_name_to_full_name = create_player_dictionaries()
-        # Create matchers
         team_matcher, player_matcher = create_matchers(self.nlp, self.team_id_dict, self.active_players, first_name_to_full_name, last_name_to_full_name)
 
-        # Initialize EntityExtractor
+
         self.entity_extractor = EntityExtractor(self.nlp, team_matcher, player_matcher, self.active_players, first_name_to_full_name, last_name_to_full_name)
 
         self.params = {
@@ -51,12 +45,11 @@ class SearchEngine:
             pd.DataFrame: Filtered DataFrame with only the desired plays that include all keywords.
         """
         if not keywords:
-            return df  # If no specific keywords, return all plays
+            return df  
 
-        # Apply a logical AND condition to check that each row in 'Description' contains all keywords
         filtered_df = df
         for keyword in keywords:
-            pattern = rf'\b{re.escape(keyword)}\b'  # Create a word boundary pattern for each keyword
+            pattern = rf'\b{re.escape(keyword)}\b' 
             filtered_df = filtered_df[filtered_df['Description'].str.contains(pattern, case=False, na=False, regex=True)]
 
         return filtered_df
@@ -64,22 +57,18 @@ class SearchEngine:
     def build_interpretation_message(self, params, play_type_keywords):
         message_parts = []
 
-        # Player name
         if params.get('player_id'):
             player_name = next((name for name, id in self.active_players.items() if id == params['player_id']), None)
             if player_name:
                 message_parts.append(player_name.title())  # Capitalize the name
 
-        # Context measure and play type keywords
         context_measure = params.get('context_measure_detailed')
         
-        # Check and append play type keywords
         if play_type_keywords:
             play_type_str = ' '.join(play_type_keywords).lower()
         else:
             play_type_str = ""
 
-        # Build the message based on context measure and play type
         if context_measure:
             action = self.get_action(context_measure)
             if play_type_str:
@@ -89,30 +78,26 @@ class SearchEngine:
         elif play_type_str:
             message_parts.append(play_type_str)
 
-        # Season type
         season_type = params.get('season_type_all_star')
         if season_type and season_type != "Regular Season":
             message_parts.append(f"in the {season_type}")
 
-        # Month
         month = params.get('month')
         if month and month != "0":
             months = ["", "October", "November", "December", "January", "February", "March", "April", "May", "June", "July", "August", "September"]
             message_parts.append(f"in {months[int(month)]}")
 
-        # Season
         season = params.get('season')
         if season:
             message_parts.append(f"during the {season} season")
 
-        # Opponent team
+
         opponent_team_id = params.get('opponent_team_id')
         if opponent_team_id:
             team_name = next((name for name, id in self.team_id_dict.items() if id == opponent_team_id), None)
             if team_name:
                 message_parts.append(f"against the {team_name.title()}")
 
-        # Clutch time
         clutch_time = params.get('clutch_time_nullable')
         if clutch_time:
             message_parts.append(f"in {clutch_time}")
@@ -123,7 +108,6 @@ class SearchEngine:
         else:
             return "No specific interpretation available"
 
-    # Helper function needs to be properly attached to the class, using `self`
     def get_action(self, context_measure):
         """ Helper function to determine the action based on context_measure """
         if context_measure == 'PTS':
@@ -146,7 +130,6 @@ class SearchEngine:
             return context_measure.lower()
         
     def filter_with_score_specifiers(self, df, score_specifiers):
-        # Calculate score difference before and after the shot
         df['Score_Diff_Before'] = df['Home_Points_Before'] - df['Visitor_Points_Before']
         df['Score_Diff_After'] = df['Home_Points_After'] - df['Visitor_Points_After']
 
@@ -156,8 +139,6 @@ class SearchEngine:
         
         # LT: Check if the shot was a lead-taking shot
         elif score_specifiers == 'LT':
-            # Filter for plays where the score difference changed from non-positive to positive
-            # or from positive to non-positive (accounting for both home and away team lead changes)
             df = df[((df['Score_Diff_Before'] <= 0) & (df['Score_Diff_After'] > 0)) |
                     ((df['Score_Diff_Before'] >= 0) & (df['Score_Diff_After'] < 0))]
 
@@ -168,7 +149,6 @@ class SearchEngine:
             params = self.build_params()
             intepretation = self.build_interpretation_message(params, shot_specifiers)
             print(intepretation)
-            print(score_specifiers)
             if params['context_measure_detailed'] == 'MISS':
                 params['context_measure_detailed'] = 'FGA'
             
@@ -180,17 +160,15 @@ class SearchEngine:
             df = pd.DataFrame(plays)
             df['video_url'] = video_urls
 
-            # Construct a date column from 'y', 'm', and 'd'
+
             df['date'] = pd.to_datetime(df['y'].astype(str) + '-' + 
                                         df['m'].astype(str).str.zfill(2) + '-' + 
                                         df['d'].astype(str).str.zfill(2))
 
-            # Sort the dataframe by the new 'date' column in descending order (most recent first)
             df = df.sort_values(by='date', ascending=False)
 
             df = process_videos(df)  # Processing layer
 
-            # If play type keywords are specified, filter the descriptions accordingly
             if shot_specifiers:
                 df = self.filter_play_descriptions(df, shot_specifiers)
             
@@ -198,15 +176,11 @@ class SearchEngine:
                 df = self.filter_with_score_specifiers(df, score_specifiers)
             
             if params['clutch_time_nullable']:
-                # if its clutch, we need to also ensure that the score diff is within 5 points
+                # Clutch is defined as the last 5 minutes of a game with a score differential of 5 or fewer points
                 df = df[df['Score_Diff'] <= 5]
             
             if context_measure == 'MISS':
-                # If the context measure is 'MISS', we need to filter out the makes
                 df = df[df['Point_Change'] == 0]
-            elif context_measure == 'FGA':
-                # If the context measure is not 'MISS', we need to filter out the misses
-                df = df[df['Point_Change'] > 0]
 
             return df
         except Exception as e:
@@ -237,7 +211,7 @@ class SearchEngine:
 
     def query(self, query):
         player_name, team_name, season_type, context_measures, month, clutch_time, shot_specifiers, score_specifiers = self.entity_extractor.extract_entities(query)
-        print(f"EXTRACTED: Player Name={player_name}, Team Name={team_name}, Season Type={season_type}, Context Measures={context_measures}, Month={month}, Clutch Time={clutch_time}, Play Types={shot_specifiers}, Score_Specifier={score_specifiers}") 
+        print(f"EXTRACTED: Player Name={player_name}, Team Name={team_name}, Season Type={season_type}, Context Measures={context_measures}, Month={month}, Clutch Time={clutch_time}, Shot Specifiers={shot_specifiers}, Score Specifier={score_specifiers}") 
         
         if "MISS" in context_measures and "PTS" in context_measures:
             context_measures.remove("PTS")

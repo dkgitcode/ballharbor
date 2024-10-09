@@ -44,3 +44,43 @@ SCORE_SPECIFIER_MAP = {
     'game-tying': 'GT', 'game tying': 'GT', 'tying': 'GT', 
     'lead-taking': 'LT', 'lead taking': 'LT', 'lead-taker': 'LT', 'lead taker': 'LT', 'lead-takers': 'LT', 'lead takers': 'LT', 'go ahead': 'LT', 'go-ahead': 'LT', 'go-aheads': 'LT', 'go aheads': 'LT', 'go-ahead': 'LT',
 }
+
+CONTEXT_MEASURE_MAP = {
+    "PTS": ["point", "score", "pts", "points", "scoring", "buckets", "bucket", "layups", "makes", "lays",
+            "step back", "alley oop", "dunk", "fadeaway", "fadeaways", "jumper", "jump shot", "midrange", "middy", "layup", "layups", "dunks", "dunk", "flush", "flushes", "alley oops", "oops", "slams", "slam dunk", "slam dunks", "slam",  "jam", "jams"] + list(SHOT_SPECIFIER_MAP.keys()),
+    "BLK": ["block", "swat", "blocks", "swats", "reject", "rejections", "rejection", "swatted"],
+    "STL": ["steal", "steals", "thief", "thieves", "cookies", "cookie", "stolen"],
+    "AST": ["assist", "apple", "dime", "assists", "passing", "apples"],
+    "REB": ["board", "rebound", "rebounds", "boards", "grab"],
+    "TOV": ["turnover", "giveaway", "turnovers", "lose", "losing possession", "lost possesion", "giveaways"],
+    "MISS": ["brick", "bricks", "miss", "misses", "airball", "missed shot", "failed shot", "missed shots", "clank", "clanks"],
+    "FGA": ["all shots", "shot attempts", "attempts", "shots", "field goal attempts", "fga", "fgas", "field goal attempt"],
+}
+
+MONTH_MAP = {
+    "january": "04", "jan": "04",
+    "february": "05", "feb": "05",
+    "march": "06", "mar": "06",
+    "april": "07", "apr": "07",
+    "may": "08",
+    "june": "09", "jun": "09",
+    "july": "10", "jul": "10",
+    "august": "11", "aug": "11",
+    "september": "12", "sep": "12",
+    "october": "01", "oct": "01",
+    "november": "02", "nov": "02",
+    "december": "03", "dec": "03"
+}
+
+CLUTCH_KEYWORDS = ["clutch", "last minute", "final minute", "end of the game", "last second", "final seconds", "last 10 seconds", "last-second", 'last seconds', 'last 5 seconds']
+SEASON_KEYWORDS = ["playoffs", "postseason", "regular season", "preseason", "all-star", "all star", 'play-offs', 'play-off', 'post-season', ]
+
+CLUTCH_TIME_MAP = {
+    "clutch": "Last 5 Minutes",
+    "last minute": "Last 1 Minute",
+    "final minute": "Last 1 Minute",
+    "end of the game": "Last 5 Minutes",
+    "last second": "Last 10 Seconds",
+    "final seconds": "Last 10 Seconds",
+    "last 10 seconds": "Last 10 Seconds",
+}
