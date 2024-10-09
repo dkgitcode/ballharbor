@@ -91,6 +91,9 @@ def process_videos(df):
     
     formatted_df['Score_Diff'] = (formatted_df['Home_Points_Before'] - formatted_df['Visitor_Points_Before']).abs()
     
+    # add Score_Diff_After to the DataFrame
+    formatted_df['Score_Diff_After'] = (formatted_df['Home_Points_After'] - formatted_df['Visitor_Points_After']).abs()
+    
 
     # Unpack the `video_url` dictionary to extract the video link and thumbnail link
     formatted_df['Video_Link'] = formatted_df['Video_URL'].apply(lambda x: x.get('lurl') if isinstance(x, dict) else None)
@@ -100,8 +103,8 @@ def process_videos(df):
     formatted_df = formatted_df[[
         'Game_ID', 'Game_Date', 'Year', 'Month', 'Day', 'Game_Code', 'Period', 
         'Home_Team', 'Visitor_Team', 'Description', 'Home_Points_Before', 'Home_Points_After',
-        'Visitor_Points_Before', 'Visitor_Points_After', 'Point_Change', 'Score_Diff',
-        'Home_Team_ID', 'Visitor_Team_ID', 'Video_Link', 'Thumbnail_Link'
+        'Visitor_Points_Before', 'Visitor_Points_After', 'Point_Change', 'Score_Diff', 'Score_Diff_After',
+        'Home_Team_ID', 'Visitor_Team_ID', 'Video_Link', 'Thumbnail_Link', 
     ]]
 
     return formatted_df

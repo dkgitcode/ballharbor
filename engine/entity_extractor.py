@@ -1,6 +1,6 @@
 import re
 import spacy
-from engine.keywords_constants import SHOT_SPECIFIER_MAP
+from engine.keywords_constants import SHOT_SPECIFIER_MAP, SCORE_SPECIFIER_MAP
 from rapidfuzz import process, fuzz
 
 
@@ -25,8 +25,6 @@ class EntityExtractor:
             "MISS": ["brick", "bricks", "miss", "misses", "airball", "missed shot", "failed shot", "missed shots", "clank", "clanks"],
             "FGA": ["all shots", "shot attempts", "attempts", "shots", "field goal attempts", "fga", "fgas", "field goal attempt"],
         }
-        # Keyword expansion mapping (to expand "lay" to "layup" and similar cases)
-
         # Month mapping for user queries
         self.month_map = {
             "january": "04", "jan": "04",
@@ -58,15 +56,16 @@ class EntityExtractor:
         context_keywords = [word for measure in self.context_measure_map for word in self.context_measure_map[measure]]
         month_keywords = list(self.month_map.keys())
         specifier_keywords = list(SHOT_SPECIFIER_MAP.keys())
+        score_keywords = list(SCORE_SPECIFIER_MAP.keys())
         clutch_keywords = ["clutch", "last minute", "final minute", "end of the game", "last second", "final seconds", "last 10 seconds", "last-second"]
         season_keywords = ["playoffs", "postseason", "regular season", "preseason", "all-star", "all star", 'play-offs', 'play-off', 'post-season', ]
-        non_player_keywords = context_keywords + month_keywords + specifier_keywords + clutch_keywords + season_keywords
+        non_player_keywords = context_keywords + month_keywords + specifier_keywords + clutch_keywords + season_keywords + score_keywords
 
         # Step 2: Perform fuzzy matching on the entire query using player names
         matched_fragment, score, _ = process.extractOne(user_query.lower(), [p.lower() for p in player_names], scorer=fuzz.partial_ratio)
 
         # Step 3: Remove the matched fragment (typo version) from the query if the score is high enough
-        if score > 65:
+        if score > 70:
             matched_player_name = player_names[[p.lower() for p in player_names].index(matched_fragment)]
             remaining_query = self.remove_fragment(user_query, matched_player_name)
         else:
@@ -92,7 +91,6 @@ class EntityExtractor:
             reformulated_query = f"{matched_player_name} " + " ".join(reformulated_words)
         else:
             reformulated_query = " ".join(reformulated_words)
-
         return reformulated_query
 
     def remove_fragment(self, query, fragment):
@@ -139,11 +137,12 @@ class EntityExtractor:
         player_name = self._extract_player_name(doc)
         team_name = self._extract_team_name(doc)
         season_type = self._extract_season_type(cleaned_query)
-        context_measures, play_type_keywords = self.get_context_measures(cleaned_query)
+        context_measures, shot_specifiers = self.get_context_measures(cleaned_query)
+        score_specifers = self._extract_score_specifiers(cleaned_query)
         month = self._extract_month(cleaned_query)
         clutch_time = self._extract_clutch_time(cleaned_query)
 
-        return player_name, team_name, season_type, context_measures, month, clutch_time, play_type_keywords
+        return player_name, team_name, season_type, context_measures, month, clutch_time, shot_specifiers, score_specifers
 
     def get_context_measures(self, user_input):
         """
@@ -153,11 +152,13 @@ class EntityExtractor:
         :return: A tuple (list of context measures, list of specific play type keywords).
         """
         doc = self.nlp(user_input.lower())
+        raw_split = user_input.lower().split()
         found_measures = set()
         shot_specifiers = []
 
         # Convert the user input to a set of canonical shot specifiers
         canonical_specifiers = set()
+        canonical_score_specifiers = []
 
         # Check for individual keywords against context measure map and shot specifier map
         for token in doc:
@@ -176,16 +177,25 @@ class EntityExtractor:
                 canonical_form = SHOT_SPECIFIER_MAP[normalized_text]
                 if canonical_form not in canonical_specifiers:
                     canonical_specifiers.add(canonical_form)
-
+        
         # If no context measures are found, default to PTS
         if not found_measures:
             found_measures.add("PTS")
 
         # Add the canonical shot specifiers to the shot_specifiers list
         shot_specifiers = canonical_specifiers
+        return list(found_measures), shot_specifiers, 
 
-        return list(found_measures), shot_specifiers
-
+    def _extract_score_specifiers(self, query):
+        score_specifiers = []
+        for spec in SCORE_SPECIFIER_MAP:
+            if re.search(rf"\b{re.escape(spec)}\b", query):
+                score_specifiers.append(SCORE_SPECIFIER_MAP[spec])
+        if not score_specifiers:
+            return None
+        
+        return score_specifiers[0]
+    
     def _extract_clutch_time(self, query):
         clutch_time_map = {
             "clutch": "Last 5 Minutes",
@@ -215,7 +225,7 @@ class EntityExtractor:
         
         # Return the highest priority match
         return sorted_matches[0]
-
+    
     def _extract_player_name(self, doc):
         player_matches = self.player_matcher(doc)
         if player_matches:

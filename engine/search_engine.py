@@ -144,14 +144,31 @@ class SearchEngine:
             return 'misses'
         else:
             return context_measure.lower()
+        
+    def filter_with_score_specifiers(self, df, score_specifiers):
+        # Calculate score difference before and after the shot
+        df['Score_Diff_Before'] = df['Home_Points_Before'] - df['Visitor_Points_Before']
+        df['Score_Diff_After'] = df['Home_Points_After'] - df['Visitor_Points_After']
 
-    def fetch_videos(self, context_measure, play_type_keywords=None):
+        # GT: Check if the shot tied the game
+        if score_specifiers == 'GT':
+            df = df[df['Score_Diff_After'] == 0]
+        
+        # LT: Check if the shot was a lead-taking shot
+        elif score_specifiers == 'LT':
+            # Filter for plays where the score difference changed from non-positive to positive
+            # or from positive to non-positive (accounting for both home and away team lead changes)
+            df = df[((df['Score_Diff_Before'] <= 0) & (df['Score_Diff_After'] > 0)) |
+                    ((df['Score_Diff_Before'] >= 0) & (df['Score_Diff_After'] < 0))]
+
+        return df
+    def fetch_videos(self, context_measure, shot_specifiers=None, score_specifiers=None):
         try:
             self.set_parameter("context_measure_detailed", context_measure)
             params = self.build_params()
-            intepretation = self.build_interpretation_message(params, play_type_keywords)
+            intepretation = self.build_interpretation_message(params, shot_specifiers)
             print(intepretation)
-            
+            print(score_specifiers)
             if params['context_measure_detailed'] == 'MISS':
                 params['context_measure_detailed'] = 'FGA'
             
@@ -174,8 +191,11 @@ class SearchEngine:
             df = process_videos(df)  # Processing layer
 
             # If play type keywords are specified, filter the descriptions accordingly
-            if play_type_keywords:
-                df = self.filter_play_descriptions(df, play_type_keywords)
+            if shot_specifiers:
+                df = self.filter_play_descriptions(df, shot_specifiers)
+            
+            if score_specifiers:
+                df = self.filter_with_score_specifiers(df, score_specifiers)
             
             if params['clutch_time_nullable']:
                 # if its clutch, we need to also ensure that the score diff is within 5 points
@@ -216,8 +236,11 @@ class SearchEngine:
             return None, None, None
 
     def query(self, query):
-        player_name, team_name, season_type, context_measures, month, clutch_time, play_type_keywords = self.entity_extractor.extract_entities(query)
-        print(f"EXTRACTED: Player Name={player_name}, Team Name={team_name}, Season Type={season_type}, Context Measures={context_measures}, Month={month}, Clutch Time={clutch_time}, Play Types={play_type_keywords}")
+        player_name, team_name, season_type, context_measures, month, clutch_time, shot_specifiers, score_specifiers = self.entity_extractor.extract_entities(query)
+        print(f"EXTRACTED: Player Name={player_name}, Team Name={team_name}, Season Type={season_type}, Context Measures={context_measures}, Month={month}, Clutch Time={clutch_time}, Play Types={shot_specifiers}, Score_Specifier={score_specifiers}") 
+        
+        if "MISS" in context_measures and "PTS" in context_measures:
+            context_measures.remove("PTS")
 
         self.set_parameter("season_type_all_star", season_type)
         self.set_parameter("month", month)
@@ -238,11 +261,13 @@ class SearchEngine:
         # If no specific context measures are extracted, default to PTS
         if not context_measures:
             context_measures = ["PTS"]
+            
+        print(context_measures)
 
         for measure in context_measures:
             vids = None
-            if measure == "PTS" or measure == "FGA":
-                vids = self.fetch_videos(measure, play_type_keywords)
+            if measure == "PTS" or measure == "FGA" or measure == "MISS":
+                vids = self.fetch_videos(measure, shot_specifiers, score_specifiers)
             else: 
                 vids = self.fetch_videos(measure)
             videos = pd.concat([videos, vids])
