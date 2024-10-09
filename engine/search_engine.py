@@ -14,7 +14,6 @@ class SearchEngine:
 
         # Create player dictionaries
         self.active_players, first_name_to_full_name, last_name_to_full_name = create_player_dictionaries()
-        print(self.active_players)
         # Create matchers
         team_matcher, player_matcher = create_matchers(self.nlp, self.team_id_dict, self.active_players, first_name_to_full_name, last_name_to_full_name)
 
@@ -156,7 +155,6 @@ class SearchEngine:
             if params['context_measure_detailed'] == 'MISS':
                 params['context_measure_detailed'] = 'FGA'
             
-            print(params)
             response = videodetailsasset.VideoDetailsAsset(**params)
             video_dict = response.get_dict()
             videos = video_dict['resultSets']

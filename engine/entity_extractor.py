@@ -134,7 +134,6 @@ class EntityExtractor:
         from engine.utils import preprocess_query  # Import here to avoid circular dependency
         cleaned_query = preprocess_query(query)
         cleaned_query = self.reformulate_query(cleaned_query)
-        print(cleaned_query)
         doc = self.nlp(cleaned_query)
 
         player_name = self._extract_player_name(doc)
